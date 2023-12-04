@@ -44,3 +44,33 @@ pub fn run() {
     println!("Not implemented yet");
     unimplemented!();
 }
+
+fn extract_calibration_value(line: &str) -> i32 {
+    0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_calibration_value_1() {
+        /// 1abc2
+        assert_eq!(extract_calibration_value("1abc2"), 12);
+    }
+    #[test]
+    fn test_extract_calibration_value_2() {
+        /// pqr3stu8vwx
+        assert_eq!(extract_calibration_value("pqr3stu8vwx"), 38);
+    }
+    #[test]
+    fn test_extract_calibration_value_3() {
+        /// a1b2c3d4e5f
+        assert_eq!(extract_calibration_value("a1b2c3d4e5f"), 15);
+    }
+    #[test]
+    fn test_extract_calibration_value_4() {
+        /// treb7uchet
+        assert_eq!(extract_calibration_value("treb7uchet"), Some(77));
+    }
+}
