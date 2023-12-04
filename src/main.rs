@@ -42,4 +42,4 @@ macro_rules! modules {
     };
 }
 
-modules![];
+modules![day_01,];
