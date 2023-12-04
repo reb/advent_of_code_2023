@@ -41,12 +41,19 @@
 const INPUT: &str = include_str!("../input/day_01");
 
 pub fn run() {
-    println!("Not implemented yet");
-    unimplemented!();
+    let calibration_value_sum: u32 = INPUT.lines().filter_map(extract_calibration_value).sum();
+
+    println!(
+        "The sum of all the calibration values is: {}",
+        calibration_value_sum
+    );
 }
 
-fn extract_calibration_value(line: &str) -> i32 {
-    0
+fn extract_calibration_value(line: &str) -> Option<u32> {
+    let first = line.chars().filter(|c| c >= &'0' && c <= &'9').next();
+    let last = line.chars().rev().filter(|c| c >= &'0' && c <= &'9').next();
+
+    Some(first?.to_digit(10)? * 10 + last?.to_digit(10)?)
 }
 
 #[cfg(test)]
@@ -55,22 +62,25 @@ mod tests {
 
     #[test]
     fn test_extract_calibration_value_1() {
-        /// 1abc2
-        assert_eq!(extract_calibration_value("1abc2"), 12);
+        // 1abc2
+        assert_eq!(extract_calibration_value("1abc2"), Some(12));
     }
+
     #[test]
     fn test_extract_calibration_value_2() {
-        /// pqr3stu8vwx
-        assert_eq!(extract_calibration_value("pqr3stu8vwx"), 38);
+        // pqr3stu8vwx
+        assert_eq!(extract_calibration_value("pqr3stu8vwx"), Some(38));
     }
+
     #[test]
     fn test_extract_calibration_value_3() {
-        /// a1b2c3d4e5f
-        assert_eq!(extract_calibration_value("a1b2c3d4e5f"), 15);
+        // a1b2c3d4e5f
+        assert_eq!(extract_calibration_value("a1b2c3d4e5f"), Some(15));
     }
+
     #[test]
     fn test_extract_calibration_value_4() {
-        /// treb7uchet
+        // treb7uchet
         assert_eq!(extract_calibration_value("treb7uchet"), Some(77));
     }
 }
