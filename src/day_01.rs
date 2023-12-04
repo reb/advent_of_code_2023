@@ -78,6 +78,10 @@ fn extract_calibration_value(line: &str) -> Option<u32> {
     Some(first?.to_digit(10)? * 10 + last?.to_digit(10)?)
 }
 
+fn extract_written_calibration_value(line: &str) -> Option<u32> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,5 +108,53 @@ mod tests {
     fn test_extract_calibration_value_4() {
         // treb7uchet
         assert_eq!(extract_calibration_value("treb7uchet"), Some(77));
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_1() {
+        // two1nine
+        assert_eq!(extract_written_calibration_value("two1nine"), Some(29));
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_2() {
+        // eightwothree
+        assert_eq!(extract_written_calibration_value("eightwothree"), Some(83));
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_3() {
+        // abcone2threexyz
+        assert_eq!(
+            extract_written_calibration_value("abcone2threexyz"),
+            Some(13)
+        );
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_4() {
+        // xtwone3four
+        assert_eq!(extract_written_calibration_value("xtwone3four"), Some(24));
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_5() {
+        // 4nineeightseven2
+        assert_eq!(
+            extract_written_calibration_value("4nineeightseven2"),
+            Some(42)
+        );
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_6() {
+        // zoneight234
+        assert_eq!(extract_written_calibration_value("zoneight234"), Some(14));
+    }
+
+    #[test]
+    fn test_written_extract_calibration_value_7() {
+        // 7pqrstsixteen
+        assert_eq!(extract_written_calibration_value("7pqrstsixteen"), Some(76));
     }
 }
