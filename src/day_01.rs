@@ -69,6 +69,16 @@ pub fn run() {
         "The sum of all the calibration values is: {}",
         calibration_value_sum
     );
+
+    let written_calibration_value_sum: u32 = INPUT
+        .lines()
+        .filter_map(extract_written_calibration_value)
+        .sum();
+
+    println!(
+        "The sum of all the calibration values, including written ones, is: {}",
+        written_calibration_value_sum
+    );
 }
 
 fn extract_calibration_value(line: &str) -> Option<u32> {
@@ -78,8 +88,55 @@ fn extract_calibration_value(line: &str) -> Option<u32> {
     Some(first?.to_digit(10)? * 10 + last?.to_digit(10)?)
 }
 
-fn extract_written_calibration_value(line: &str) -> Option<u32> {
+fn convert_to_u32(i: usize, c: char, line: &str) -> Option<u32> {
+    if c >= '0' && c <= '9' {
+        return Some(c.to_digit(10)?);
+    }
+    if line[i..].starts_with("one") {
+        return Some(1);
+    }
+    if line[i..].starts_with("two") {
+        return Some(2);
+    }
+    if line[i..].starts_with("three") {
+        return Some(3);
+    }
+    if line[i..].starts_with("four") {
+        return Some(4);
+    }
+    if line[i..].starts_with("five") {
+        return Some(5);
+    }
+    if line[i..].starts_with("six") {
+        return Some(6);
+    }
+    if line[i..].starts_with("seven") {
+        return Some(7);
+    }
+    if line[i..].starts_with("eight") {
+        return Some(8);
+    }
+    if line[i..].starts_with("nine") {
+        return Some(9);
+    }
     None
+}
+
+fn extract_written_calibration_value(line: &str) -> Option<u32> {
+    // also check for the occurrence of substrings at every position
+
+    let first = line
+        .char_indices()
+        .filter_map(|(i, c)| convert_to_u32(i, c, line))
+        .next();
+
+    let last = line
+        .char_indices()
+        .rev()
+        .filter_map(|(i, c)| convert_to_u32(i, c, line))
+        .next();
+
+    Some(first? * 10 + last?)
 }
 
 #[cfg(test)]
