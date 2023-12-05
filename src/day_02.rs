@@ -109,10 +109,20 @@ pub fn run() {
         "The sum of the games that are possible is: {}",
         possible_game_id_sum
     );
+
+    let minimal_power_set_sum: u32 = games
+        .iter()
+        .map(|game| game.minimal_cube_set().power())
+        .sum();
+
+    println!(
+        "The sum of the powers of the minimal cube sets is: {}",
+        minimal_power_set_sum
+    )
 }
 
 #[derive(Debug, PartialEq)]
-struct Round {
+struct CubeSet {
     red: u32,
     green: u32,
     blue: u32,
@@ -121,41 +131,49 @@ struct Round {
 #[derive(Debug, PartialEq)]
 struct Game {
     id: u32,
-    rounds: Vec<Round>,
+    rounds: Vec<CubeSet>,
 }
 
-impl Round {
-    fn parse(input: &str) -> IResult<&str, Round> {
-        let extract_round = separated_list0(
+impl CubeSet {
+    fn default() -> CubeSet {
+        CubeSet {
+            red: 0,
+            green: 0,
+            blue: 0,
+        }
+    }
+
+    fn parse(input: &str) -> IResult<&str, CubeSet> {
+        let extract_cube_set = separated_list0(
             tag(", "),
             pair(digit1, alt((tag(" red"), tag(" green"), tag(" blue")))),
         );
 
-        fn convert_to_round(cubes: Vec<(&str, &str)>) -> Result<Round, ParseIntError> {
-            let mut round = Round {
-                red: 0,
-                green: 0,
-                blue: 0,
-            };
+        fn convert_to_cube_set(cubes: Vec<(&str, &str)>) -> Result<CubeSet, ParseIntError> {
+            let mut cube_set = CubeSet::default();
 
             for (a, colour) in cubes {
                 let amount = a.parse()?;
 
                 if colour == " red" {
-                    round.red = amount;
+                    cube_set.red = amount;
                 }
                 if colour == " green" {
-                    round.green = amount;
+                    cube_set.green = amount;
                 }
                 if colour == " blue" {
-                    round.blue = amount;
+                    cube_set.blue = amount;
                 }
             }
 
-            return Ok(round);
+            return Ok(cube_set);
         }
 
-        map_res(extract_round, convert_to_round)(input)
+        map_res(extract_cube_set, convert_to_cube_set)(input)
+    }
+
+    fn power(&self) -> u32 {
+        self.red * self.green * self.blue
     }
 }
 
@@ -163,10 +181,10 @@ impl Game {
     fn parse(input: &str) -> IResult<&str, Game> {
         let extract_values = pair(
             delimited(tag("Game "), digit1, tag(": ")),
-            separated_list0(tag("; "), Round::parse),
+            separated_list0(tag("; "), CubeSet::parse),
         );
 
-        fn convert_to_game((number, rounds): (&str, Vec<Round>)) -> Result<Game, ParseIntError> {
+        fn convert_to_game((number, rounds): (&str, Vec<CubeSet>)) -> Result<Game, ParseIntError> {
             Ok(Game {
                 id: number.parse()?,
                 rounds,
@@ -183,6 +201,22 @@ impl Game {
             .find(|round| round.red > 12 || round.green > 13 || round.blue > 14)
             .is_none()
     }
+
+    fn minimal_cube_set(&self) -> CubeSet {
+        let mut minimal = CubeSet::default();
+        for round in self.rounds.iter() {
+            if round.red > minimal.red {
+                minimal.red = round.red;
+            }
+            if round.green > minimal.green {
+                minimal.green = round.green;
+            }
+            if round.blue > minimal.blue {
+                minimal.blue = round.blue;
+            }
+        }
+        minimal
+    }
 }
 
 #[cfg(test)]
@@ -190,23 +224,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_convert_to_game_1() {
+    fn test_game_parse_1() {
         let line = "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green";
 
         let expected_game = Game {
             id: 1,
             rounds: vec![
-                Round {
+                CubeSet {
                     red: 4,
                     green: 0,
                     blue: 3,
                 },
-                Round {
+                CubeSet {
                     red: 1,
                     green: 2,
                     blue: 6,
                 },
-                Round {
+                CubeSet {
                     red: 0,
                     green: 2,
                     blue: 0,
@@ -218,22 +252,22 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_to_game_2() {
+    fn test_game_parse_2() {
         let line = "Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue";
         let expected_game = Game {
             id: 2,
             rounds: vec![
-                Round {
+                CubeSet {
                     red: 0,
                     green: 2,
                     blue: 1,
                 },
-                Round {
+                CubeSet {
                     red: 1,
                     green: 3,
                     blue: 4,
                 },
-                Round {
+                CubeSet {
                     red: 0,
                     green: 1,
                     blue: 1,
@@ -245,22 +279,22 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_to_game_3() {
+    fn test_game_parse_3() {
         let line = "Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red";
         let expected_game = Game {
             id: 3,
             rounds: vec![
-                Round {
+                CubeSet {
                     red: 20,
                     green: 8,
                     blue: 6,
                 },
-                Round {
+                CubeSet {
                     red: 4,
                     green: 13,
                     blue: 5,
                 },
-                Round {
+                CubeSet {
                     red: 1,
                     green: 5,
                     blue: 0,
@@ -272,22 +306,22 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_to_game_4() {
+    fn test_game_parse_4() {
         let line = "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red";
         let expected_game = Game {
             id: 4,
             rounds: vec![
-                Round {
+                CubeSet {
                     red: 3,
                     green: 1,
                     blue: 6,
                 },
-                Round {
+                CubeSet {
                     red: 6,
                     green: 3,
                     blue: 0,
                 },
-                Round {
+                CubeSet {
                     red: 14,
                     green: 3,
                     blue: 15,
@@ -299,17 +333,17 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_to_game_5() {
+    fn test_game_parse_5() {
         let line = "Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green";
         let expected_game = Game {
             id: 5,
             rounds: vec![
-                Round {
+                CubeSet {
                     red: 6,
                     green: 3,
                     blue: 1,
                 },
-                Round {
+                CubeSet {
                     red: 1,
                     green: 2,
                     blue: 2,
@@ -318,5 +352,130 @@ mod tests {
         };
 
         assert_eq!(Game::parse(line), Ok(("", expected_game)));
+    }
+
+    #[test]
+    fn test_game_cube_powers_1() {
+        let game = Game {
+            id: 1,
+            rounds: vec![
+                CubeSet {
+                    red: 4,
+                    green: 0,
+                    blue: 3,
+                },
+                CubeSet {
+                    red: 1,
+                    green: 2,
+                    blue: 6,
+                },
+                CubeSet {
+                    red: 0,
+                    green: 2,
+                    blue: 0,
+                },
+            ],
+        };
+
+        assert_eq!(game.minimal_cube_set().power(), 48);
+    }
+
+    #[test]
+    fn test_game_cube_powers_2() {
+        let game = Game {
+            id: 2,
+            rounds: vec![
+                CubeSet {
+                    red: 0,
+                    green: 2,
+                    blue: 1,
+                },
+                CubeSet {
+                    red: 1,
+                    green: 3,
+                    blue: 4,
+                },
+                CubeSet {
+                    red: 0,
+                    green: 1,
+                    blue: 1,
+                },
+            ],
+        };
+
+        assert_eq!(game.minimal_cube_set().power(), 12);
+    }
+
+    #[test]
+    fn test_game_cube_powers_3() {
+        let game = Game {
+            id: 3,
+            rounds: vec![
+                CubeSet {
+                    red: 20,
+                    green: 8,
+                    blue: 6,
+                },
+                CubeSet {
+                    red: 4,
+                    green: 13,
+                    blue: 5,
+                },
+                CubeSet {
+                    red: 1,
+                    green: 5,
+                    blue: 0,
+                },
+            ],
+        };
+
+        assert_eq!(game.minimal_cube_set().power(), 1560);
+    }
+
+    #[test]
+    fn test_game_cube_powers_4() {
+        let game = Game {
+            id: 4,
+            rounds: vec![
+                CubeSet {
+                    red: 3,
+                    green: 1,
+                    blue: 6,
+                },
+                CubeSet {
+                    red: 6,
+                    green: 3,
+                    blue: 0,
+                },
+                CubeSet {
+                    red: 14,
+                    green: 3,
+                    blue: 15,
+                },
+            ],
+        };
+
+        assert_eq!(game.minimal_cube_set().power(), 630);
+    }
+
+    #[test]
+    fn test_game_cube_powers_5() {
+        let game = Game {
+            id: 5,
+            rounds: vec![
+                CubeSet {
+                    red: 6,
+                    green: 3,
+                    blue: 1,
+                },
+                CubeSet {
+                    red: 1,
+                    green: 2,
+                    blue: 2,
+                },
+            ],
+        };
+
+        assert_eq!(game.minimal_cube_set().power(), 36);
     }
 }
