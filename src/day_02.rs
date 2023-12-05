@@ -64,21 +64,15 @@ pub fn run() {
         })
         .collect();
 
-    let mut possible_game_id_sum = 0;
-    'game_loop: for game in games {
-        for round in game.rounds {
-            if round.red > 12 {
-                continue 'game_loop;
+    let possible_game_id_sum: u32 = games
+        .iter()
+        .filter_map(|game| {
+            match game.legal_game() {
+                true => Some(game.id), // add legal games
+                false => None,         // ignore illegal games
             }
-            if round.green > 13 {
-                continue 'game_loop;
-            }
-            if round.blue > 14 {
-                continue 'game_loop;
-            }
-        }
-        possible_game_id_sum += game.id;
-    }
+        })
+        .sum();
 
     println!(
         "The sum of the games that are possible is: {}",
@@ -149,6 +143,14 @@ impl Game {
         }
 
         map_res(extract_values, convert_to_game)(input)
+    }
+
+    fn legal_game(&self) -> bool {
+        // return true if none of the rounds has amounts above the expected amounts
+        self.rounds
+            .iter()
+            .find(|round| round.red > 12 || round.green > 13 || round.blue > 14)
+            .is_none()
     }
 }
 
