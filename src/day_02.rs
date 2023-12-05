@@ -56,8 +56,34 @@ use std::num::ParseIntError;
 const INPUT: &str = include_str!("../input/day_02");
 
 pub fn run() {
-    println!("Not implemented yet");
-    unimplemented!();
+    let games: Vec<Game> = INPUT
+        .lines()
+        .filter_map(|line| match Game::parse(line) {
+            Ok((_, game)) => Some(game),
+            _ => None,
+        })
+        .collect();
+
+    let mut possible_game_id_sum = 0;
+    'game_loop: for game in games {
+        for round in game.rounds {
+            if round.red > 12 {
+                continue 'game_loop;
+            }
+            if round.green > 13 {
+                continue 'game_loop;
+            }
+            if round.blue > 14 {
+                continue 'game_loop;
+            }
+        }
+        possible_game_id_sum += game.id;
+    }
+
+    println!(
+        "The sum of the games that are possible is: {}",
+        possible_game_id_sum
+    );
 }
 
 #[derive(Debug, PartialEq)]
