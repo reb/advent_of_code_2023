@@ -43,6 +43,15 @@
 ///
 /// Determine which games would have been possible if the bag had been loaded with only 12 red
 /// cubes, 13 green cubes, and 14 blue cubes. What is the sum of the IDs of those games?
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::character::complete::digit1;
+use nom::combinator::map_res;
+use nom::multi::separated_list0;
+use nom::sequence::delimited;
+use nom::sequence::pair;
+use nom::IResult;
+use std::num::ParseIntError;
 
 const INPUT: &str = include_str!("../input/day_02");
 
@@ -64,8 +73,57 @@ struct Game {
     rounds: Vec<Round>,
 }
 
-fn convert_to_game(line: &str) -> Option<Game> {
-    None
+impl Round {
+    fn parse(input: &str) -> IResult<&str, Round> {
+        let extract_round = separated_list0(
+            tag(", "),
+            pair(digit1, alt((tag(" red"), tag(" green"), tag(" blue")))),
+        );
+
+        fn convert_to_round(cubes: Vec<(&str, &str)>) -> Result<Round, ParseIntError> {
+            let mut round = Round {
+                red: 0,
+                green: 0,
+                blue: 0,
+            };
+
+            for (a, colour) in cubes {
+                let amount = a.parse()?;
+
+                if colour == " red" {
+                    round.red = amount;
+                }
+                if colour == " green" {
+                    round.green = amount;
+                }
+                if colour == " blue" {
+                    round.blue = amount;
+                }
+            }
+
+            return Ok(round);
+        }
+
+        map_res(extract_round, convert_to_round)(input)
+    }
+}
+
+impl Game {
+    fn parse(input: &str) -> IResult<&str, Game> {
+        let extract_values = pair(
+            delimited(tag("Game "), digit1, tag(": ")),
+            separated_list0(tag("; "), Round::parse),
+        );
+
+        fn convert_to_game((number, rounds): (&str, Vec<Round>)) -> Result<Game, ParseIntError> {
+            Ok(Game {
+                id: number.parse()?,
+                rounds,
+            })
+        }
+
+        map_res(extract_values, convert_to_game)(input)
+    }
 }
 
 #[cfg(test)]
@@ -87,17 +145,17 @@ mod tests {
                 Round {
                     red: 1,
                     green: 2,
-                    blue: 0,
+                    blue: 6,
                 },
                 Round {
                     red: 0,
                     green: 2,
-                    blue: 6,
+                    blue: 0,
                 },
             ],
         };
 
-        assert_eq!(convert_to_game(line), Some(expected_game));
+        assert_eq!(Game::parse(line), Ok(("", expected_game)));
     }
 
     #[test]
@@ -124,7 +182,7 @@ mod tests {
             ],
         };
 
-        assert_eq!(convert_to_game(line), Some(expected_game));
+        assert_eq!(Game::parse(line), Ok(("", expected_game)));
     }
 
     #[test]
@@ -151,7 +209,7 @@ mod tests {
             ],
         };
 
-        assert_eq!(convert_to_game(line), Some(expected_game));
+        assert_eq!(Game::parse(line), Ok(("", expected_game)));
     }
 
     #[test]
@@ -178,7 +236,7 @@ mod tests {
             ],
         };
 
-        assert_eq!(convert_to_game(line), Some(expected_game));
+        assert_eq!(Game::parse(line), Ok(("", expected_game)));
     }
 
     #[test]
@@ -200,6 +258,6 @@ mod tests {
             ],
         };
 
-        assert_eq!(convert_to_game(line), Some(expected_game));
+        assert_eq!(Game::parse(line), Ok(("", expected_game)));
     }
 }
