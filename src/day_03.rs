@@ -84,6 +84,13 @@ fn parse_schematic(input: &str) -> Schematic {
                 }
             }
         }
+        match current_number {
+            Some((pos, s)) => {
+                schematic.insert(pos, s);
+                current_number = None;
+            }
+            None => {}
+        }
     }
 
     schematic
@@ -130,7 +137,7 @@ mod tests {
     use super::*;
 
     fn example_schematic() -> Schematic {
-        let mut expected_schematic = HashMap::new();
+        let mut expected_schematic = Schematic::new();
         expected_schematic.insert((0, 0), String::from("467"));
         expected_schematic.insert((0, 5), String::from("114"));
         expected_schematic.insert((1, 3), String::from("*"));
@@ -152,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_schematic() {
+    fn test_parse_schematic_1() {
         let input = "\
            467..114..\n\
            ...*......\n\
@@ -166,6 +173,16 @@ mod tests {
            .664.598..";
 
         assert_eq!(parse_schematic(input), example_schematic());
+    }
+
+    #[test]
+    fn test_parse_schematic_2() {
+        let input = "1";
+
+        let mut expected_schematic = Schematic::new();
+        expected_schematic.insert((0, 0), String::from("1"));
+
+        assert_eq!(parse_schematic(input), expected_schematic);
     }
 
     #[test]
