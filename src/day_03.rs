@@ -85,9 +85,9 @@ const INPUT: &str = include_str!("../input/day_03");
 pub fn run() {
     let schematic = parse_schematic(INPUT);
 
-    let part_numbers = find_part_numbers(&schematic);
+    let parts = map_parts(&schematic);
 
-    let sum_of_part_numbers: u32 = part_numbers.iter().sum();
+    let sum_of_part_numbers: u32 = parts.iter().flat_map(Part::get_numbers).sum();
     println!(
         "The sum of all the part numbers in the engine schematic is: {}",
         sum_of_part_numbers
@@ -96,6 +96,37 @@ pub fn run() {
 
 type Point = (i32, i32);
 type Schematic = HashMap<Point, String>;
+
+#[derive(Debug)]
+struct Part {
+    #[allow(dead_code)]
+    position: Point,
+    identity: String,
+    numbers: Vec<u32>,
+}
+
+impl PartialEq for Part {
+    fn eq(&self, other: &Self) -> bool {
+        self.position == other.position
+            && self.identity == other.identity
+            && self.numbers.len() == other.numbers.len()
+            && self.numbers.iter().all(|num| other.numbers.contains(num))
+    }
+}
+
+impl Part {
+    fn new(position: Point, identity: String) -> Part {
+        Part {
+            position,
+            identity,
+            numbers: Vec::new(),
+        }
+    }
+
+    fn get_numbers(&self) -> &Vec<u32> {
+        &self.numbers
+    }
+}
 
 fn parse_schematic(input: &str) -> Schematic {
     let mut schematic = Schematic::new();
@@ -135,7 +166,7 @@ fn parse_schematic(input: &str) -> Schematic {
     schematic
 }
 
-fn find_part_numbers(schematic: &Schematic) -> Vec<u32> {
+fn map_parts(schematic: &Schematic) -> Vec<Part> {
     // split the schematic into numbers and parts
     let mut numbers = Vec::new();
     let mut parts = HashMap::new();
@@ -147,28 +178,25 @@ fn find_part_numbers(schematic: &Schematic) -> Vec<u32> {
             }
             Err(..) => {
                 // else add it to the parts
-                parts.insert(point, s);
+                parts.insert(point, Part::new(point, s.clone()));
             }
         }
     }
 
-    // iterate over the numbers and try to find parts that lie next to them
-    numbers
-        .into_iter()
-        .filter_map(|((x_n, y_n), s, number)| {
-            // iterate over all possible positions a part can
-            for x in (x_n - 1)..=(x_n + 1) {
-                for y in (y_n - 1)..=(y_n + s.len() as i32) {
-                    if parts.get(&(x, y)).is_some() {
-                        // if there is a part, this is a part number
-                        return Some(number);
-                    }
+    // map numbers to parts
+    for ((x_n, y_n), s, number) in numbers.into_iter() {
+        // iterate over all possible positions a part can
+        for x in (x_n - 1)..=(x_n + 1) {
+            for y in (y_n - 1)..=(y_n + s.len() as i32) {
+                if let Some(part) = parts.get_mut(&(x, y)) {
+                    // put the part number into the associated part's list
+                    part.numbers.push(number);
                 }
             }
-            // otherwise it is not, and should be discarded
-            None
-        })
-        .collect()
+        }
+    }
+
+    return parts.into_values().collect();
 }
 
 #[cfg(test)]
@@ -195,6 +223,41 @@ mod tests {
         expected_schematic.insert((9, 5), String::from("598"));
 
         expected_schematic
+    }
+
+    fn example_parts() -> Vec<Part> {
+        vec![
+            Part {
+                position: (1, 3),
+                identity: "*".to_string(),
+                numbers: vec![35, 467],
+            },
+            Part {
+                position: (3, 6),
+                identity: "#".to_string(),
+                numbers: vec![633],
+            },
+            Part {
+                position: (4, 3),
+                identity: "*".to_string(),
+                numbers: vec![617],
+            },
+            Part {
+                position: (5, 5),
+                identity: "+".to_string(),
+                numbers: vec![592],
+            },
+            Part {
+                position: (8, 3),
+                identity: "$".to_string(),
+                numbers: vec![664],
+            },
+            Part {
+                position: (8, 5),
+                identity: "*".to_string(),
+                numbers: vec![598, 755],
+            },
+        ]
     }
 
     #[test]
@@ -225,13 +288,15 @@ mod tests {
     }
 
     #[test]
-    fn test_find_part_numbers() {
-        let expected_part_numbers = vec![35, 467, 592, 598, 617, 633, 664, 755];
-        let mut actual_part_numbers = find_part_numbers(&example_schematic());
-        // since the function doesn't have a requirement on the order of the return, sort it to
-        // make comparisons easier
-        actual_part_numbers.sort();
+    fn test_map_parts() {
+        let actual_parts = map_parts(&example_schematic());
+        let expected_parts = example_parts();
 
-        assert_eq!(actual_part_numbers, expected_part_numbers);
+        // check whether the lengths of the parts list are equal
+        assert_eq!(actual_parts.len(), example_parts().len());
+        // check if all the parts in the actual parts are in the expected parts
+        assert!(actual_parts
+            .iter()
+            .all(|part| expected_parts.contains(part)));
     }
 }
