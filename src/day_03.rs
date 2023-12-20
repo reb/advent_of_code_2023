@@ -44,8 +44,15 @@ use std::collections::HashMap;
 const INPUT: &str = include_str!("../input/day_03");
 
 pub fn run() {
-    println!("Not implemented yet");
-    unimplemented!();
+    let schematic = parse_schematic(INPUT);
+
+    let part_numbers = find_part_numbers(&schematic);
+
+    let sum_of_part_numbers: u32 = part_numbers.iter().sum();
+    println!(
+        "The sum of all the part numbers in the engine schematic is: {}",
+        sum_of_part_numbers
+    );
 }
 
 type Point = (i32, i32);
