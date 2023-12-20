@@ -49,16 +49,71 @@ pub fn run() {
 }
 
 type Point = (i32, i32);
-type Schematic = HashMap<Point, char>;
+type Schematic = HashMap<Point, String>;
 
 fn parse_schematic(input: &str) -> Schematic {
-    input
-        .lines()
-        .enumerate()
-        .flat_map(|(x, line)| {
-            line.char_indices()
-                .filter(|(_, c)| c != &'.')
-                .map(move |(y, c)| ((x as i32, y as i32), c))
+    let mut schematic = Schematic::new();
+    let mut current_number = None;
+    for (x, line) in input.lines().enumerate() {
+        for (y, ch) in line.chars().enumerate() {
+            if ch.is_digit(10) {
+                current_number = match current_number {
+                    None => Some(((x as i32, y as i32), ch.to_string())),
+                    Some((pos, mut s)) => {
+                        s.push(ch);
+                        Some((pos, s))
+                    }
+                };
+            } else {
+                match current_number {
+                    Some((pos, s)) => {
+                        schematic.insert(pos, s);
+                        current_number = None;
+                    }
+                    None => {}
+                }
+                if ch != '.' {
+                    schematic.insert((x as i32, y as i32), ch.to_string());
+                }
+            }
+        }
+    }
+
+    schematic
+}
+
+fn find_part_numbers(schematic: &Schematic) -> Vec<u32> {
+    // split the schematic into numbers and parts
+    let mut numbers = Vec::new();
+    let mut parts = HashMap::new();
+    for (&point, s) in schematic.iter() {
+        match s.parse() {
+            Ok(number) => {
+                // if the string is parseable into a number, add it to the numbers
+                numbers.push((point, s, number));
+            }
+            Err(..) => {
+                // else add it to the parts
+                parts.insert(point, s);
+            }
+        }
+    }
+
+    // iterate over the numbers and try to find parts that lie next to them
+    numbers
+        .into_iter()
+        .filter_map(|((x_n, y_n), s, number)| {
+            // iterate over all possible positions a part can
+            for x in (x_n - 1)..=(x_n + 1) {
+                for y in (y_n - 1)..=(y_n + s.len() as i32) {
+                    if parts.get(&(x, y)).is_some() {
+                        // if there is a part, this is a part number
+                        return Some(number);
+                    }
+                }
+            }
+            // otherwise it is not, and should be discarded
+            None
         })
         .collect()
 }
@@ -66,6 +121,28 @@ fn parse_schematic(input: &str) -> Schematic {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn example_schematic() -> Schematic {
+        let mut expected_schematic = HashMap::new();
+        expected_schematic.insert((0, 0), String::from("467"));
+        expected_schematic.insert((0, 5), String::from("114"));
+        expected_schematic.insert((1, 3), String::from("*"));
+        expected_schematic.insert((2, 2), String::from("35"));
+        expected_schematic.insert((2, 6), String::from("633"));
+        expected_schematic.insert((3, 6), String::from("#"));
+        expected_schematic.insert((4, 0), String::from("617"));
+        expected_schematic.insert((4, 3), String::from("*"));
+        expected_schematic.insert((5, 5), String::from("+"));
+        expected_schematic.insert((5, 7), String::from("58"));
+        expected_schematic.insert((6, 2), String::from("592"));
+        expected_schematic.insert((7, 6), String::from("755"));
+        expected_schematic.insert((8, 3), String::from("$"));
+        expected_schematic.insert((8, 5), String::from("*"));
+        expected_schematic.insert((9, 1), String::from("664"));
+        expected_schematic.insert((9, 5), String::from("598"));
+
+        expected_schematic
+    }
 
     #[test]
     fn test_parse_schematic() {
@@ -81,42 +158,17 @@ mod tests {
            ...$.*....\n\
            .664.598..";
 
-        let mut expected_schematic = HashMap::new();
-        expected_schematic.insert((0, 0), '4');
-        expected_schematic.insert((0, 1), '6');
-        expected_schematic.insert((0, 2), '7');
-        expected_schematic.insert((0, 5), '1');
-        expected_schematic.insert((0, 6), '1');
-        expected_schematic.insert((0, 7), '4');
-        expected_schematic.insert((1, 3), '*');
-        expected_schematic.insert((2, 2), '3');
-        expected_schematic.insert((2, 3), '5');
-        expected_schematic.insert((2, 6), '6');
-        expected_schematic.insert((2, 7), '3');
-        expected_schematic.insert((2, 8), '3');
-        expected_schematic.insert((3, 6), '#');
-        expected_schematic.insert((4, 0), '6');
-        expected_schematic.insert((4, 1), '1');
-        expected_schematic.insert((4, 2), '7');
-        expected_schematic.insert((4, 3), '*');
-        expected_schematic.insert((5, 5), '+');
-        expected_schematic.insert((5, 7), '5');
-        expected_schematic.insert((5, 8), '8');
-        expected_schematic.insert((6, 2), '5');
-        expected_schematic.insert((6, 3), '9');
-        expected_schematic.insert((6, 4), '2');
-        expected_schematic.insert((7, 6), '7');
-        expected_schematic.insert((7, 7), '5');
-        expected_schematic.insert((7, 8), '5');
-        expected_schematic.insert((8, 3), '$');
-        expected_schematic.insert((8, 5), '*');
-        expected_schematic.insert((9, 1), '6');
-        expected_schematic.insert((9, 2), '6');
-        expected_schematic.insert((9, 3), '4');
-        expected_schematic.insert((9, 5), '5');
-        expected_schematic.insert((9, 6), '9');
-        expected_schematic.insert((9, 7), '8');
+        assert_eq!(parse_schematic(input), example_schematic());
+    }
 
-        assert_eq!(parse_schematic(input), expected_schematic);
+    #[test]
+    fn test_find_part_numbers() {
+        let expected_part_numbers = vec![35, 467, 592, 598, 617, 633, 664, 755];
+        let mut actual_part_numbers = find_part_numbers(&example_schematic());
+        // since the function doesn't have a requirement on the order of the return, sort it to
+        // make comparisons easier
+        actual_part_numbers.sort();
+
+        assert_eq!(actual_part_numbers, expected_part_numbers);
     }
 }
