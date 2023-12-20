@@ -92,6 +92,12 @@ pub fn run() {
         "The sum of all the part numbers in the engine schematic is: {}",
         sum_of_part_numbers
     );
+
+    let sum_of_gear_ratios: u32 = find_gear_ratios(&parts).iter().sum();
+    println!(
+        "The sum of all the gear ratios in the engine schematis is: {}",
+        sum_of_gear_ratios
+    );
 }
 
 type Point = (i32, i32);
@@ -199,6 +205,16 @@ fn map_parts(schematic: &Schematic) -> Vec<Part> {
     return parts.into_values().collect();
 }
 
+fn find_gear_ratios(parts: &Vec<Part>) -> Vec<u32> {
+    let gear_identity = "*".to_string();
+    parts
+        .iter()
+        .filter(|part| part.identity == gear_identity)
+        .filter(|part| part.numbers.len() == 2)
+        .map(|part| part.numbers.iter().product())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,5 +314,15 @@ mod tests {
         assert!(actual_parts
             .iter()
             .all(|part| expected_parts.contains(part)));
+    }
+
+    #[test]
+    fn test_gear_ratios() {
+        let expected_gear_ratios = vec![16345, 451490];
+
+        let mut actual_gear_ratios = find_gear_ratios(&example_parts());
+        actual_gear_ratios.sort();
+
+        assert_eq!(actual_gear_ratios, expected_gear_ratios);
     }
 }
