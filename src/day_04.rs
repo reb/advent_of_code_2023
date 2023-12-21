@@ -54,14 +54,21 @@
 /// So, in this example, the Elf's pile of scratchcards is worth 13 points.
 ///
 /// Take a seat in the large pile of colorful cards. How many points are they worth in total?
+use nom::bytes::complete::tag;
+use nom::character::complete;
+use nom::character::complete::{char, digit1, multispace1, newline};
+use nom::multi::separated_list0;
+use nom::sequence::{preceded, separated_pair, tuple};
 use nom::IResult;
 use std::collections::HashSet;
 
 const INPUT: &str = include_str!("../input/day_04");
 
 pub fn run() {
-    println!("Not implemented yet");
-    unimplemented!();
+    let (_, scratchcards) =
+        separated_list0(newline, Scratchcard::parse)(INPUT).expect("parsing input failed");
+
+    dbg!(scratchcards);
 }
 
 #[derive(Debug, PartialEq)]
@@ -72,11 +79,25 @@ struct Scratchcard {
 
 impl Scratchcard {
     fn parse(input: &str) -> IResult<&str, Scratchcard> {
+        fn set_of_numbers(input: &str) -> IResult<&str, HashSet<u32>> {
+            let (input, vec) = separated_list0(multispace1, complete::u32)(input)?;
+            Ok((input, vec.into_iter().collect()))
+        }
+
+        let (input, (winning_numbers, numbers)) = separated_pair(
+            preceded(
+                tuple((tag("Card"), multispace1, digit1, tag(":"), multispace1)),
+                set_of_numbers,
+            ),
+            tuple((multispace1, char('|'), multispace1)),
+            set_of_numbers,
+        )(input)?;
+
         Ok((
-            "",
+            input,
             Scratchcard {
-                winning_numbers: HashSet::new(),
-                numbers: HashSet::new(),
+                winning_numbers,
+                numbers,
             },
         ))
     }
