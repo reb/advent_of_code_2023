@@ -131,6 +131,12 @@
 /// So, the lowest location number in this example is 35.
 ///
 /// What is the lowest location number that corresponds to any of the initial seed numbers?
+use nom::character::complete;
+use nom::character::complete::space1;
+use nom::sequence::{preceded, tuple};
+use nom::IResult;
+use std::ops::Range;
+
 const INPUT: &str = include_str!("../input/day_05");
 
 pub fn run() {
@@ -138,12 +144,76 @@ pub fn run() {
     unimplemented!();
 }
 
+#[derive(Debug, PartialEq)]
+struct AlmanacMapEntry {
+    destination: Range<u32>,
+    source: Range<u32>,
+}
+
+impl AlmanacMapEntry {
+    fn parse(input: &str) -> IResult<&str, AlmanacMapEntry> {
+        let (input, (destination_start, source_start, range_size)) = tuple((
+            complete::u32,
+            preceded(space1, complete::u32),
+            preceded(space1, complete::u32),
+        ))(input)?;
+
+        Ok((
+            input,
+            AlmanacMapEntry {
+                destination: destination_start..destination_start + range_size,
+                source: source_start..source_start + range_size,
+            },
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_() {
-        assert_eq!("", "")
+    fn test_almanac_map_entry_parse_1() {
+        let input = "50 98 2";
+
+        let expected_entry = AlmanacMapEntry {
+            destination: 50..52,
+            source: 98..100,
+        };
+
+        let (remainder, actual_entry) = AlmanacMapEntry::parse(input).unwrap();
+
+        assert_eq!(actual_entry, expected_entry);
+        assert_eq!(remainder, "");
+    }
+
+    #[test]
+    fn test_almanac_map_entry_parse_2() {
+        let input = "0 69 1";
+
+        let expected_entry = AlmanacMapEntry {
+            destination: 0..1,
+            source: 69..70,
+        };
+
+        let (remainder, actual_entry) = AlmanacMapEntry::parse(input).unwrap();
+
+        assert_eq!(actual_entry, expected_entry);
+        assert_eq!(remainder, "");
+    }
+
+    #[test]
+    fn test_almanac_map_entry_parse_3() {
+        let input = "1 0 69";
+
+        let expected_entry = AlmanacMapEntry {
+            destination: 1..70,
+            source: 0..69,
+        };
+
+        let (remainder, actual_entry) = AlmanacMapEntry::parse(input).unwrap();
+
+        assert_eq!(actual_entry, expected_entry);
+        assert_eq!(remainder, "");
     }
 }
