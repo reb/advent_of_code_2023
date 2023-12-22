@@ -68,7 +68,11 @@ pub fn run() {
     let (_, scratchcards) =
         separated_list0(newline, Scratchcard::parse)(INPUT).expect("parsing input failed");
 
-    dbg!(scratchcards);
+    let sum_of_score: u32 = scratchcards.iter().map(Scratchcard::score).sum();
+    println!(
+        "The total amount of points that all the scratchcards are worth is: {}",
+        sum_of_score
+    );
 }
 
 #[derive(Debug, PartialEq)]
@@ -100,6 +104,14 @@ impl Scratchcard {
                 numbers,
             },
         ))
+    }
+
+    fn score(&self) -> u32 {
+        let numbers_won_with = self.winning_numbers.intersection(&self.numbers).count() as u32;
+        match numbers_won_with {
+            0 => 0,
+            1.. => 2_u32.pow(numbers_won_with - 1),
+        }
     }
 }
 
@@ -171,5 +183,65 @@ mod tests {
         };
 
         assert_eq!(Scratchcard::parse(input), Ok(("", expected_scratchcard)));
+    }
+
+    #[test]
+    fn test_scratchcard_score_1() {
+        let scratchcard = Scratchcard {
+            winning_numbers: vec![41, 48, 83, 86, 17].into_iter().collect(),
+            numbers: vec![83, 86, 6, 31, 17, 9, 48, 53].into_iter().collect(),
+        };
+
+        assert_eq!(scratchcard.score(), 8);
+    }
+
+    #[test]
+    fn test_scratchcard_score_2() {
+        let scratchcard = Scratchcard {
+            winning_numbers: vec![13, 32, 20, 16, 61].into_iter().collect(),
+            numbers: vec![61, 30, 68, 82, 17, 32, 24, 19].into_iter().collect(),
+        };
+
+        assert_eq!(scratchcard.score(), 2);
+    }
+
+    #[test]
+    fn test_scratchcard_score_3() {
+        let scratchcard = Scratchcard {
+            winning_numbers: vec![1, 21, 53, 59, 44].into_iter().collect(),
+            numbers: vec![69, 82, 63, 72, 16, 21, 14, 1].into_iter().collect(),
+        };
+
+        assert_eq!(scratchcard.score(), 2);
+    }
+
+    #[test]
+    fn test_scratchcard_score_4() {
+        let scratchcard = Scratchcard {
+            winning_numbers: vec![41, 92, 73, 84, 69].into_iter().collect(),
+            numbers: vec![59, 84, 76, 51, 58, 5, 54, 83].into_iter().collect(),
+        };
+
+        assert_eq!(scratchcard.score(), 1);
+    }
+
+    #[test]
+    fn test_scratchcard_score_5() {
+        let scratchcard = Scratchcard {
+            winning_numbers: vec![87, 83, 26, 28, 32].into_iter().collect(),
+            numbers: vec![88, 30, 70, 12, 93, 22, 82, 36].into_iter().collect(),
+        };
+
+        assert_eq!(scratchcard.score(), 0);
+    }
+
+    #[test]
+    fn test_scratchcard_score_6() {
+        let scratchcard = Scratchcard {
+            winning_numbers: vec![31, 18, 13, 56, 72].into_iter().collect(),
+            numbers: vec![74, 77, 10, 23, 35, 67, 36, 11].into_iter().collect(),
+        };
+
+        assert_eq!(scratchcard.score(), 0);
     }
 }
