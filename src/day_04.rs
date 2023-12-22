@@ -108,6 +108,7 @@ use nom::multi::separated_list0;
 use nom::sequence::{preceded, separated_pair, tuple};
 use nom::IResult;
 use std::collections::HashSet;
+use std::iter;
 
 const INPUT: &str = include_str!("../input/day_04");
 
@@ -119,6 +120,12 @@ pub fn run() {
     println!(
         "The total amount of points that all the scratchcards are worth is: {}",
         sum_of_score
+    );
+
+    let total_amount_scratchcards = amount_of_scratchcards_won(&scratchcards);
+    println!(
+        "The total amount of scratchcards that you end up with is: {}",
+        total_amount_scratchcards
     );
 }
 
@@ -154,16 +161,38 @@ impl Scratchcard {
     }
 
     fn score(&self) -> u32 {
-        let numbers_won_with = self.winning_numbers.intersection(&self.numbers).count() as u32;
-        match numbers_won_with {
+        let amount_won_with = self.amount_won() as u32;
+        match amount_won_with {
             0 => 0,
-            1.. => 2_u32.pow(numbers_won_with - 1),
+            1.. => 2_u32.pow(amount_won_with - 1),
         }
+    }
+
+    fn amount_won(&self) -> usize {
+        self.winning_numbers.intersection(&self.numbers).count()
     }
 }
 
 fn amount_of_scratchcards_won(scratchcards: &Vec<Scratchcard>) -> u32 {
-    0
+    // initialize a co-vector for the scratchcards to keep track of the cards on the pile,
+    // start with 1 of each card
+    let mut pile: Vec<u32> = iter::repeat(1).take(scratchcards.len()).collect();
+
+    // run through all the scratchcards to count the winnings
+    for (i, scratchcard) in scratchcards.iter().enumerate() {
+        // for the 'x' of numbers won with, add the next 'x' of scratchcards to the pile
+        for x in (i + 1)..=(i + scratchcard.amount_won()) {
+            // get the amount of the current card, this will be the amount of next cards won
+            if let Some(&this_card_amount) = pile.get(i) {
+                // add these amounts to the next 'x' cards
+                if let Some(card_amount) = pile.get_mut(x) {
+                    *card_amount += this_card_amount;
+                }
+            }
+        }
+    }
+
+    pile.iter().sum()
 }
 
 #[cfg(test)]
