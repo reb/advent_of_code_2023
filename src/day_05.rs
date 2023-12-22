@@ -131,31 +131,72 @@
 /// So, the lowest location number in this example is 35.
 ///
 /// What is the lowest location number that corresponds to any of the initial seed numbers?
+use nom::branch::alt;
+use nom::bytes::complete::tag;
 use nom::character::complete;
-use nom::character::complete::space1;
-use nom::sequence::{preceded, tuple};
+use nom::character::complete::{newline, space1};
+use nom::multi::separated_list1;
+use nom::sequence::{delimited, preceded, tuple};
 use nom::IResult;
 use std::ops::Range;
 
 const INPUT: &str = include_str!("../input/day_05");
 
 pub fn run() {
-    println!("Not implemented yet");
-    unimplemented!();
+    let (_, almanac) = Almanac::parse(INPUT).expect("parsing failed");
+
+    dbg!(almanac);
+}
+
+#[derive(Debug, PartialEq)]
+struct Almanac {
+    seeds: Vec<u64>,
+    maps: Vec<Vec<AlmanacMapEntry>>,
+}
+
+impl Almanac {
+    fn parse(input: &str) -> IResult<&str, Almanac> {
+        let (input, seeds) = delimited(
+            tag("seeds: "),
+            separated_list1(space1, complete::u64),
+            tuple((newline, newline)),
+        )(input)?;
+
+        let almanac_map = preceded(
+            tuple((
+                alt((
+                    tag("seed-to-soil"),
+                    tag("soil-to-fertilizer"),
+                    tag("fertilizer-to-water"),
+                    tag("water-to-light"),
+                    tag("light-to-temperature"),
+                    tag("temperature-to-humidity"),
+                    tag("humidity-to-location"),
+                )),
+                tag(" map:"),
+                newline,
+            )),
+            separated_list1(newline, AlmanacMapEntry::parse),
+        );
+
+        let (input, maps) = separated_list1(tuple((newline, newline)), almanac_map)(input)?;
+
+        Ok((input, Almanac { seeds, maps }))
+    }
 }
 
 #[derive(Debug, PartialEq)]
 struct AlmanacMapEntry {
-    destination: Range<u32>,
-    source: Range<u32>,
+    destination: Range<u64>,
+    source: Range<u64>,
 }
 
 impl AlmanacMapEntry {
     fn parse(input: &str) -> IResult<&str, AlmanacMapEntry> {
         let (input, (destination_start, source_start, range_size)) = tuple((
-            complete::u32,
-            preceded(space1, complete::u32),
-            preceded(space1, complete::u32),
+            complete::u64,
+            preceded(space1, complete::u64),
+            preceded(space1, complete::u64),
         ))(input)?;
 
         Ok((
@@ -171,6 +212,7 @@ impl AlmanacMapEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_almanac_map_entry_parse_1() {
@@ -215,5 +257,139 @@ mod tests {
 
         assert_eq!(actual_entry, expected_entry);
         assert_eq!(remainder, "");
+    }
+
+    fn example_almanac() -> Almanac {
+        Almanac {
+            seeds: vec![79, 14, 55, 13],
+            maps: vec![
+                vec![
+                    AlmanacMapEntry {
+                        destination: 50..52,
+                        source: 98..100,
+                    },
+                    AlmanacMapEntry {
+                        destination: 52..100,
+                        source: 50..98,
+                    },
+                ],
+                vec![
+                    AlmanacMapEntry {
+                        destination: 0..37,
+                        source: 15..52,
+                    },
+                    AlmanacMapEntry {
+                        destination: 37..39,
+                        source: 52..54,
+                    },
+                    AlmanacMapEntry {
+                        destination: 39..54,
+                        source: 0..15,
+                    },
+                ],
+                vec![
+                    AlmanacMapEntry {
+                        destination: 49..57,
+                        source: 53..61,
+                    },
+                    AlmanacMapEntry {
+                        destination: 0..42,
+                        source: 11..53,
+                    },
+                    AlmanacMapEntry {
+                        destination: 42..49,
+                        source: 0..7,
+                    },
+                    AlmanacMapEntry {
+                        destination: 57..61,
+                        source: 7..11,
+                    },
+                ],
+                vec![
+                    AlmanacMapEntry {
+                        destination: 88..95,
+                        source: 18..25,
+                    },
+                    AlmanacMapEntry {
+                        destination: 18..88,
+                        source: 25..95,
+                    },
+                ],
+                vec![
+                    AlmanacMapEntry {
+                        destination: 45..68,
+                        source: 77..100,
+                    },
+                    AlmanacMapEntry {
+                        destination: 81..100,
+                        source: 45..64,
+                    },
+                    AlmanacMapEntry {
+                        destination: 68..81,
+                        source: 64..77,
+                    },
+                ],
+                vec![
+                    AlmanacMapEntry {
+                        destination: 0..1,
+                        source: 69..70,
+                    },
+                    AlmanacMapEntry {
+                        destination: 1..70,
+                        source: 0..69,
+                    },
+                ],
+                vec![
+                    AlmanacMapEntry {
+                        destination: 60..97,
+                        source: 56..93,
+                    },
+                    AlmanacMapEntry {
+                        destination: 56..60,
+                        source: 93..97,
+                    },
+                ],
+            ],
+        }
+    }
+
+    #[test]
+    fn test_almanac_parse() {
+        let input = "\
+        seeds: 79 14 55 13\n\
+        \n\
+        seed-to-soil map:\n\
+        50 98 2\n\
+        52 50 48\n\
+        \n\
+        soil-to-fertilizer map:\n\
+        0 15 37\n\
+        37 52 2\n\
+        39 0 15\n\
+        \n\
+        fertilizer-to-water map:\n\
+        49 53 8\n\
+        0 11 42\n\
+        42 0 7\n\
+        57 7 4\n\
+        \n\
+        water-to-light map:\n\
+        88 18 7\n\
+        18 25 70\n\
+        \n\
+        light-to-temperature map:\n\
+        45 77 23\n\
+        81 45 19\n\
+        68 64 13\n\
+        \n\
+        temperature-to-humidity map:\n\
+        0 69 1\n\
+        1 0 69\n\
+        \n\
+        humidity-to-location map:\n\
+        60 56 37\n\
+        56 93 4";
+
+        assert_eq!(Almanac::parse(input), Ok(("", example_almanac())));
     }
 }

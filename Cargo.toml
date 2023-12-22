@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 lazy_static = "*"
 nom = "7"
+pretty_assertions = "1.4.0"
