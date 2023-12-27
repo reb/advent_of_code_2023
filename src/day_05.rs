@@ -145,7 +145,12 @@ const INPUT: &str = include_str!("../input/day_05");
 pub fn run() {
     let (_, almanac) = Almanac::parse(INPUT).expect("parsing failed");
 
-    dbg!(almanac);
+    let locations = almanac.get_locations();
+    let lowest_location = locations
+        .iter()
+        .min()
+        .expect("there was no lowest location");
+    println!("The lowest location number is: {}", lowest_location);
 }
 
 #[derive(Debug, PartialEq)]
@@ -183,6 +188,26 @@ impl Almanac {
 
         Ok((input, Almanac { seeds, maps }))
     }
+
+    fn get_locations(&self) -> Vec<u64> {
+        self.seeds
+            .iter()
+            .map(|seed| {
+                // start with the seed number, and go through all the almanac maps in the list
+                let mut n = *seed;
+                for map in self.maps.iter() {
+                    // look for a match in the entries of the almanac map
+                    n = match map.iter().filter_map(|entry| entry.map(&n)).next() {
+                        // either an entry is found in the almanac map
+                        Some(mapped) => mapped,
+                        // or it remains the same number
+                        None => n,
+                    }
+                }
+                return n;
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -206,6 +231,14 @@ impl AlmanacMapEntry {
                 source: source_start..source_start + range_size,
             },
         ))
+    }
+
+    fn map(&self, n: &u64) -> Option<u64> {
+        if !self.source.contains(n) {
+            return None;
+        }
+
+        Some(self.destination.start + (n - self.source.start))
     }
 }
 
@@ -391,5 +424,12 @@ mod tests {
         56 93 4";
 
         assert_eq!(Almanac::parse(input), Ok(("", example_almanac())));
+    }
+
+    #[test]
+    fn test_almanac_get_locations() {
+        let expected_locations = vec![82, 43, 86, 35];
+
+        assert_eq!(example_almanac().get_locations(), expected_locations);
     }
 }
