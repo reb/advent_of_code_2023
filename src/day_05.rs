@@ -180,6 +180,7 @@ pub fn run() {
 #[derive(Debug, PartialEq)]
 struct Almanac {
     seeds: Vec<u64>,
+    seed_ranges: Vec<Range<u64>>,
     maps: Vec<Vec<AlmanacMapEntry>>,
 }
 
@@ -190,6 +191,14 @@ impl Almanac {
             separated_list1(space1, complete::u64),
             tuple((newline, newline)),
         )(input)?;
+
+        let seed_ranges = seeds
+            .chunks_exact(2)
+            .filter_map(|array| match array {
+                &[start, size] => Some(start..start + size),
+                _ => None,
+            })
+            .collect();
 
         let almanac_map = preceded(
             tuple((
@@ -210,7 +219,14 @@ impl Almanac {
 
         let (input, maps) = separated_list1(tuple((newline, newline)), almanac_map)(input)?;
 
-        Ok((input, Almanac { seeds, maps }))
+        Ok((
+            input,
+            Almanac {
+                seeds,
+                seed_ranges,
+                maps,
+            },
+        ))
     }
 
     fn get_locations(&self) -> Vec<u64> {
@@ -319,6 +335,7 @@ mod tests {
     fn example_almanac() -> Almanac {
         Almanac {
             seeds: vec![79, 14, 55, 13],
+            seed_ranges: vec![79..93, 55..68],
             maps: vec![
                 vec![
                     AlmanacMapEntry {
