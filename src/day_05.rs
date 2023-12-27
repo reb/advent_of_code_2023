@@ -175,6 +175,16 @@ pub fn run() {
         .min()
         .expect("there was no lowest location");
     println!("The lowest location number is: {}", lowest_location);
+
+    let location_ranges = almanac.get_locations_from_seed_ranges();
+    let lowest_location_in_seed_ranges = location_ranges
+        .first()
+        .expect("there was no lowest location in the seed ranges")
+        .start;
+    println!(
+        "The lowest location number from seed ranges is: {}",
+        lowest_location_in_seed_ranges
+    );
 }
 
 #[derive(Debug, PartialEq)]
@@ -248,6 +258,50 @@ impl Almanac {
             })
             .collect()
     }
+
+    fn get_locations_from_seed_ranges(&self) -> Vec<Range<u64>> {
+        let mut inputs = self.seed_ranges.clone();
+        let mut outputs = Vec::new();
+
+        // go over every map, translating all the inputs into outputs
+        for map in self.maps.iter() {
+            for entry in map.iter() {
+                // map all the input ranges into output ranges, any remaining input ranges are used
+                // for the next map entry
+                let (mapped, remainder): (Vec<_>, Vec<_>) = inputs
+                    .into_iter()
+                    .map(|input| entry.map_range(input))
+                    .unzip();
+                inputs = remainder.into_iter().flat_map(|i| i).collect();
+                outputs.append(&mut mapped.into_iter().filter_map(|o| o).collect());
+            }
+            // remaining input ranges stay as they are, add all the outputs ranges for the next map
+            inputs.append(&mut outputs);
+            // sort the ranges
+            inputs.sort_by_key(|range| range.start);
+            // collapse ranges together if the end and start overlap, this is not really needed
+            inputs = inputs.into_iter().fold(Vec::new(), |mut vec, next_range| {
+                match vec.pop() {
+                    Some(range) => match range.end == next_range.start {
+                        true => {
+                            // the ranges should be merged
+                            vec.push(range.start..next_range.end);
+                        }
+                        false => {
+                            // the ranges are separate
+                            vec.push(range);
+                            vec.push(next_range);
+                        }
+                    },
+                    None => {
+                        vec.push(next_range);
+                    }
+                }
+                return vec;
+            });
+        }
+        inputs
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -279,6 +333,36 @@ impl AlmanacMapEntry {
         }
 
         Some(self.destination.start + (n - self.source.start))
+    }
+
+    fn map_range(&self, input: Range<u64>) -> (Option<Range<u64>>, Vec<Range<u64>>) {
+        // map the start and the last number in the range (boundary - 1)
+        match (self.map(&input.start), self.map(&(input.end - 1))) {
+            // the input range is fully contained, there is no remainder
+            (Some(mapped_start), Some(mapped_end)) => (Some(mapped_start..mapped_end + 1), vec![]),
+            // only the start can be mapped, the end is outside of the entry
+            // the destination end correlates to the source's end, so no need to map
+            (Some(mapped_start), None) => (
+                Some(mapped_start..self.destination.end),
+                vec![self.source.end..input.end],
+            ),
+            // only the end can be mapped, the start is outside of the entry
+            // the destination start correlates to the source's start, so no need to map
+            (None, Some(mapped_end)) => (
+                Some(self.destination.start..mapped_end + 1),
+                vec![input.start..self.source.start],
+            ),
+            // the input range isn't in source at all, return the input as remainder
+            (None, None) => {
+                if input.start < self.source.start && input.end > self.source.end {
+                    return (
+                        Some(self.destination.clone()),
+                        vec![input.start..self.source.start, self.source.end..input.end],
+                    );
+                }
+                (None, vec![input])
+            }
+        }
     }
 }
 
@@ -472,5 +556,32 @@ mod tests {
         let expected_locations = vec![82, 43, 86, 35];
 
         assert_eq!(example_almanac().get_locations(), expected_locations);
+    }
+
+    #[test]
+    fn test_almanac_get_locations_from_seed_ranges() {
+        let actual_location_ranges = example_almanac().get_locations_from_seed_ranges();
+        assert_eq!(actual_location_ranges, vec![46..61, 82..85, 86..90, 94..99]);
+    }
+
+    #[test]
+    fn test_almanac_entry_map_range_1() {
+        let entry = AlmanacMapEntry {
+            destination: 18..88,
+            source: 25..95,
+        };
+        assert_eq!(entry.map_range(81..95), (Some(74..88), vec![]))
+    }
+
+    #[test]
+    fn test_almanac_entry_map_range_2() {
+        let entry = AlmanacMapEntry {
+            destination: 10..20,
+            source: 40..50,
+        };
+        assert_eq!(
+            entry.map_range(35..55),
+            (Some(10..20), vec![35..40, 50..55])
+        )
     }
 }
