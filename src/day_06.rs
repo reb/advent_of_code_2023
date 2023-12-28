@@ -74,8 +74,34 @@
 /// multiply these numbers together?
 
 pub fn run() {
+    // small input, so hardcode instead of parsing
+    // Time:        53     89     76     98
+    // Distance:   313   1090   1214   1201
+    let races = vec![
+        Race {
+            time: 53,
+            record_distance: 313,
+        },
+        Race {
+            time: 89,
+            record_distance: 1090,
+        },
+        Race {
+            time: 76,
+            record_distance: 1214,
+        },
+        Race {
+            time: 98,
+            record_distance: 1201,
+        },
+    ];
     println!("Not implemented yet");
     unimplemented!();
+}
+
+struct Race {
+    time: u32,
+    record_distance: u32,
 }
 
 #[cfg(test)]
