@@ -72,6 +72,7 @@
 ///
 /// Determine the number of ways you could beat the record in each race. What do you get if you
 /// multiply these numbers together?
+use std::ops::RangeInclusive;
 
 pub fn run() {
     // small input, so hardcode instead of parsing
@@ -104,12 +105,43 @@ struct Race {
     record_distance: u32,
 }
 
+impl Race {
+    fn opportunities_to_win(&self) -> RangeInclusive<u32> {
+        0..=1
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_() {
-        assert_eq!("", "")
+    fn test_race_opportunities_to_win_1() {
+        let race = Race {
+            time: 7,
+            record_distance: 9,
+        };
+
+        assert_eq!(race.opportunities_to_win(), 2..=5);
+    }
+
+    #[test]
+    fn test_race_opportunities_to_win_2() {
+        let race = Race {
+            time: 15,
+            record_distance: 40,
+        };
+
+        assert_eq!(race.opportunities_to_win(), 4..=11);
+    }
+
+    #[test]
+    fn test_race_opportunities_to_win_3() {
+        let race = Race {
+            time: 30,
+            record_distance: 200,
+        };
+
+        assert_eq!(race.opportunities_to_win(), 11..=19);
     }
 }
