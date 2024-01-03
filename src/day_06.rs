@@ -96,8 +96,19 @@ pub fn run() {
             record_distance: 1201,
         },
     ];
-    println!("Not implemented yet");
-    unimplemented!();
+
+    let opportunities_multiplied: u32 = races
+        .iter()
+        .map(|race| {
+            let range = race.opportunities_to_win();
+            range.end() - range.start() + 1
+        })
+        .product();
+
+    println!(
+        "The number of ways you could win each race multiplied gives: {}",
+        opportunities_multiplied
+    );
 }
 
 struct Race {
@@ -107,7 +118,21 @@ struct Race {
 
 impl Race {
     fn opportunities_to_win(&self) -> RangeInclusive<u32> {
-        0..=1
+        // try to find intersections of the formula for the race length and beating the record
+        // distance:
+        // record_distance + 1 = x * (race_time - x)
+        // record_distance + 1 - x * (race_time - x) = 0
+        // record_distance + 1 - (race_time * x - x²) = 0
+        // x² - race_time * x + record_distance + 1 = 0
+        // now use the quadratic formula (-b±√(b²-4ac))/(2a) where ax²+bx+c=0
+        // so a = 1, b = -race_time and c = record_distance + 1
+
+        //  delta = √(b²-4ac)
+        let delta = ((self.time.pow(2) - (4 * (self.record_distance + 1))) as f64).sqrt();
+        let lower_bound = ((self.time as f64 - delta) / 2.0).ceil() as u32;
+        let upper_bound = ((self.time as f64 + delta) / 2.0).floor() as u32;
+
+        lower_bound..=upper_bound
     }
 }
 
