@@ -200,4 +200,14 @@ mod tests {
 
         assert_eq!(race.opportunities_to_win(), 11..=19);
     }
+
+    #[test]
+    fn test_race_opportunities_to_win_4() {
+        let race = Race {
+            time: 71530,
+            record_distance: 940200,
+        };
+
+        assert_eq!(race.opportunities_to_win(), 14..=71516);
+    }
 }
