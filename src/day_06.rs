@@ -124,6 +124,7 @@ pub fn run() {
         .iter()
         .map(|race| {
             let range = race.opportunities_to_win();
+            // have to add 1 because the range is inclusive
             range.end() - range.start() + 1
         })
         .product();
@@ -140,6 +141,12 @@ pub fn run() {
         time: 53897698,
         record_distance: 313109012141201,
     };
+
+    let big_race_opportunities_range = big_race.opportunities_to_win();
+    println!(
+        "The number of ways to beat the big race is: {}",
+        big_race_opportunities_range.end() - big_race_opportunities_range.start() + 1
+    );
 }
 
 struct Race {
