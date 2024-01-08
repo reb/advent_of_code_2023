@@ -88,14 +88,30 @@
 /// the total winnings in this example are 6440.
 ///
 /// Find the rank of every hand in your set. What are the total winnings?
+use nom::bytes::complete::is_a;
+use nom::character::complete;
+use nom::character::complete::{newline, space1};
+use nom::combinator::map_res;
+use nom::multi::separated_list1;
+use nom::sequence::tuple;
+use nom::IResult;
 use std::collections::HashMap;
 use std::str::FromStr;
 
 const INPUT: &str = include_str!("../input/day_07");
 
 pub fn run() {
-    println!("Not implemented yet");
-    unimplemented!();
+    let (_, mut hands) =
+        separated_list1(newline, Hand::from_str)(INPUT).expect("Parsing went wrong");
+    hands.sort();
+
+    let winnings: u32 = hands
+        .iter()
+        .enumerate()
+        .map(|(rank, hand)| (rank + 1) as u32 * hand.bid)
+        .sum();
+
+    println!("The total winnings are: {}", winnings);
 }
 
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
@@ -151,6 +167,18 @@ enum Value {
 struct Hand {
     value: Value,
     bid: u32,
+}
+
+impl Hand {
+    fn from_str(input: &str) -> IResult<&str, Hand> {
+        let (input, (value, _, bid)) = tuple((
+            map_res(is_a("AKQJT98765432"), Value::from_str),
+            space1,
+            complete::u32,
+        ))(input)?;
+
+        Ok((input, Hand { value, bid }))
+    }
 }
 
 impl FromStr for Value {
