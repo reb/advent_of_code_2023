@@ -154,13 +154,13 @@ impl From<char> for Card {
 
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 enum Value {
-    High(Card, (Card, Card, Card, Card)),
-    Pair(Card, (Card, Card, Card)),
-    TwoPairs((Card, Card), Card),
-    ThreeOfAKind(Card, (Card, Card)),
-    FullHouse((Card, Card)),
-    FourOfAKind(Card, Card),
-    FiveOfAKind(Card),
+    High(Vec<Card>),
+    Pair(Vec<Card>),
+    TwoPairs(Vec<Card>),
+    ThreeOfAKind(Vec<Card>),
+    FullHouse(Vec<Card>),
+    FourOfAKind(Vec<Card>),
+    FiveOfAKind(Vec<Card>),
 }
 
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -185,12 +185,14 @@ impl FromStr for Value {
     type Err = String;
 
     fn from_str(hand: &str) -> Result<Self, Self::Err> {
-        let mut card_counts = HashMap::new();
+        // transform the cards to a vec
+        let cards: Vec<Card> = hand.chars().map(Card::from).collect();
 
         // count all occurrences
-        for card in hand.chars().map(Card::from) {
-            *card_counts.entry(card).or_insert(0) += 1;
-        }
+        let card_counts = cards.iter().fold(HashMap::new(), |mut counts, card| {
+            *counts.entry(card).or_insert(0) += 1;
+            counts
+        });
 
         // put the card counts in a vec and sort it with the highest amount first
         let mut sorted_card_counts: Vec<_> = card_counts
@@ -201,15 +203,13 @@ impl FromStr for Value {
         sorted_card_counts.reverse();
 
         match sorted_card_counts[..] {
-            [(5, set)] => Ok(Value::FiveOfAKind(set)),
-            [(4, set), (1, high)] => Ok(Value::FourOfAKind(set, high)),
-            [(3, high), (2, low)] => Ok(Value::FullHouse((high, low))),
-            [(3, set), (1, high), (1, low)] => Ok(Value::ThreeOfAKind(set, (high, low))),
-            [(2, set_high), (2, set_low), (1, high)] => {
-                Ok(Value::TwoPairs((set_high, set_low), high))
-            }
-            [(2, set), (1, high), (1, mid), (1, low)] => Ok(Value::Pair(set, (high, mid, low))),
-            [(1, c1), (1, c2), (1, c3), (1, c4), (1, c5)] => Ok(Value::High(c1, (c2, c3, c4, c5))),
+            [(5, _)] => Ok(Value::FiveOfAKind(cards)),
+            [(4, _), (1, _)] => Ok(Value::FourOfAKind(cards)),
+            [(3, _), (2, _)] => Ok(Value::FullHouse(cards)),
+            [(3, _), (1, _), (1, _)] => Ok(Value::ThreeOfAKind(cards)),
+            [(2, _), (2, _), (1, _)] => Ok(Value::TwoPairs(cards)),
+            [(2, _), (1, _), (1, _), (1, _)] => Ok(Value::Pair(cards)),
+            [(1, _), (1, _), (1, _), (1, _), (1, _)] => Ok(Value::High(cards)),
             _ => Err("Could not match on a known hand value".to_string()),
         }
     }
@@ -217,13 +217,16 @@ impl FromStr for Value {
 
 #[cfg(test)]
 mod tests {
+    use super::Card::{
+        Ace, Eight, Five, Four, Jack, King, Nine, Queen, Seven, Six, Ten, Three, Two,
+    };
     use super::*;
 
     #[test]
     fn test_value_from_str_1() {
         assert_eq!(
             Value::from_str("32T3K"),
-            Ok(Value::Pair(Card::Three, (Card::King, Card::Ten, Card::Two)))
+            Ok(Value::Pair(vec![Three, Two, Ten, Three, King]))
         );
     }
 
@@ -231,7 +234,7 @@ mod tests {
     fn test_value_from_str_2() {
         assert_eq!(
             Value::from_str("T55J5"),
-            Ok(Value::ThreeOfAKind(Card::Five, (Card::Jack, Card::Ten)))
+            Ok(Value::ThreeOfAKind(vec![Ten, Five, Five, Jack, Five]))
         );
     }
 
@@ -239,7 +242,7 @@ mod tests {
     fn test_value_from_str_3() {
         assert_eq!(
             Value::from_str("KK677"),
-            Ok(Value::TwoPairs((Card::King, Card::Seven), Card::Six))
+            Ok(Value::TwoPairs(vec![King, King, Six, Seven, Seven]))
         );
     }
 
@@ -247,7 +250,7 @@ mod tests {
     fn test_value_from_str_4() {
         assert_eq!(
             Value::from_str("KTJJT"),
-            Ok(Value::TwoPairs((Card::Jack, Card::Ten), Card::King))
+            Ok(Value::TwoPairs(vec![King, Ten, Jack, Jack, Ten]))
         );
     }
 
@@ -255,7 +258,7 @@ mod tests {
     fn test_value_from_str_5() {
         assert_eq!(
             Value::from_str("QQQJA"),
-            Ok(Value::ThreeOfAKind(Card::Queen, (Card::Ace, Card::Jack)))
+            Ok(Value::ThreeOfAKind(vec![Queen, Queen, Queen, Jack, Ace]))
         );
     }
 
@@ -263,23 +266,23 @@ mod tests {
     fn test_hand_sort() {
         let mut hands = vec![
             Hand {
-                value: Value::Pair(Card::Three, (Card::King, Card::Ten, Card::Two)),
+                value: Value::Pair(vec![Three, Two, Ten, Three, King]),
                 bid: 765,
             },
             Hand {
-                value: Value::ThreeOfAKind(Card::Five, (Card::Jack, Card::Ten)),
+                value: Value::ThreeOfAKind(vec![Ten, Five, Five, Jack, Five]),
                 bid: 684,
             },
             Hand {
-                value: Value::TwoPairs((Card::King, Card::Seven), Card::Six),
+                value: Value::TwoPairs(vec![King, King, Six, Seven, Seven]),
                 bid: 28,
             },
             Hand {
-                value: Value::TwoPairs((Card::Jack, Card::Ten), Card::King),
+                value: Value::TwoPairs(vec![King, Ten, Jack, Jack, Ten]),
                 bid: 220,
             },
             Hand {
-                value: Value::ThreeOfAKind(Card::Queen, (Card::Ace, Card::Jack)),
+                value: Value::ThreeOfAKind(vec![Queen, Queen, Queen, Jack, Ace]),
                 bid: 483,
             },
         ];
@@ -287,23 +290,23 @@ mod tests {
 
         let expected_hands = vec![
             Hand {
-                value: Value::Pair(Card::Three, (Card::King, Card::Ten, Card::Two)),
+                value: Value::Pair(vec![Three, Two, Ten, Three, King]),
                 bid: 765,
             },
             Hand {
-                value: Value::TwoPairs((Card::Jack, Card::Ten), Card::King),
+                value: Value::TwoPairs(vec![King, Ten, Jack, Jack, Ten]),
                 bid: 220,
             },
             Hand {
-                value: Value::TwoPairs((Card::King, Card::Seven), Card::Six),
+                value: Value::TwoPairs(vec![King, King, Six, Seven, Seven]),
                 bid: 28,
             },
             Hand {
-                value: Value::ThreeOfAKind(Card::Five, (Card::Jack, Card::Ten)),
+                value: Value::ThreeOfAKind(vec![Ten, Five, Five, Jack, Five]),
                 bid: 684,
             },
             Hand {
-                value: Value::ThreeOfAKind(Card::Queen, (Card::Ace, Card::Jack)),
+                value: Value::ThreeOfAKind(vec![Queen, Queen, Queen, Jack, Ace]),
                 bid: 483,
             },
         ];
