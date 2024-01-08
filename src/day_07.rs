@@ -88,6 +88,9 @@
 /// the total winnings in this example are 6440.
 ///
 /// Find the rank of every hand in your set. What are the total winnings?
+use std::collections::HashMap;
+use std::str::FromStr;
+
 const INPUT: &str = include_str!("../input/day_07");
 
 pub fn run() {
@@ -95,12 +98,188 @@ pub fn run() {
     unimplemented!();
 }
 
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+enum Card {
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
+    Ace,
+}
+
+impl From<char> for Card {
+    fn from(card: char) -> Self {
+        match card {
+            '2' => Card::Two,
+            '3' => Card::Three,
+            '4' => Card::Four,
+            '5' => Card::Five,
+            '6' => Card::Six,
+            '7' => Card::Seven,
+            '8' => Card::Eight,
+            '9' => Card::Nine,
+            'T' => Card::Ten,
+            'J' => Card::Jack,
+            'Q' => Card::Queen,
+            'K' => Card::King,
+            'A' => Card::Ace,
+            _ => panic!("Tried to make a card from an unknown character"),
+        }
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
+enum Value {
+    High(Card, (Card, Card, Card, Card)),
+    Pair(Card, (Card, Card, Card)),
+    TwoPairs((Card, Card), Card),
+    ThreeOfAKind(Card, (Card, Card)),
+    FullHouse((Card, Card)),
+    FourOfAKind(Card, Card),
+    FiveOfAKind(Card),
+}
+
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
+struct Hand {
+    value: Value,
+    bid: u32,
+}
+
+impl FromStr for Value {
+    type Err = String;
+
+    fn from_str(hand: &str) -> Result<Self, Self::Err> {
+        let mut card_counts = HashMap::new();
+
+        // count all occurrences
+        for card in hand.chars().map(Card::from) {
+            *card_counts.entry(card).or_insert(0) += 1;
+        }
+
+        // put the card counts in a vec and sort it with the highest amount first
+        let mut sorted_card_counts: Vec<_> = card_counts
+            .into_iter()
+            .map(|(card, count)| (count, card))
+            .collect();
+        sorted_card_counts.sort();
+        sorted_card_counts.reverse();
+
+        match sorted_card_counts[..] {
+            [(5, set)] => Ok(Value::FiveOfAKind(set)),
+            [(4, set), (1, high)] => Ok(Value::FourOfAKind(set, high)),
+            [(3, high), (2, low)] => Ok(Value::FullHouse((high, low))),
+            [(3, set), (1, high), (1, low)] => Ok(Value::ThreeOfAKind(set, (high, low))),
+            [(2, set_high), (2, set_low), (1, high)] => {
+                Ok(Value::TwoPairs((set_high, set_low), high))
+            }
+            [(2, set), (1, high), (1, mid), (1, low)] => Ok(Value::Pair(set, (high, mid, low))),
+            [(1, c1), (1, c2), (1, c3), (1, c4), (1, c5)] => Ok(Value::High(c1, (c2, c3, c4, c5))),
+            _ => Err("Could not match on a known hand value".to_string()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_() {
-        assert_eq!("", "")
+    fn test_value_from_str_1() {
+        assert_eq!(
+            Value::from_str("32T3K"),
+            Ok(Value::Pair(Card::Three, (Card::King, Card::Ten, Card::Two)))
+        );
+    }
+
+    #[test]
+    fn test_value_from_str_2() {
+        assert_eq!(
+            Value::from_str("T55J5"),
+            Ok(Value::ThreeOfAKind(Card::Five, (Card::Jack, Card::Ten)))
+        );
+    }
+
+    #[test]
+    fn test_value_from_str_3() {
+        assert_eq!(
+            Value::from_str("KK677"),
+            Ok(Value::TwoPairs((Card::King, Card::Seven), Card::Six))
+        );
+    }
+
+    #[test]
+    fn test_value_from_str_4() {
+        assert_eq!(
+            Value::from_str("KTJJT"),
+            Ok(Value::TwoPairs((Card::Jack, Card::Ten), Card::King))
+        );
+    }
+
+    #[test]
+    fn test_value_from_str_5() {
+        assert_eq!(
+            Value::from_str("QQQJA"),
+            Ok(Value::ThreeOfAKind(Card::Queen, (Card::Ace, Card::Jack)))
+        );
+    }
+
+    #[test]
+    fn test_hand_sort() {
+        let mut hands = vec![
+            Hand {
+                value: Value::Pair(Card::Three, (Card::King, Card::Ten, Card::Two)),
+                bid: 765,
+            },
+            Hand {
+                value: Value::ThreeOfAKind(Card::Five, (Card::Jack, Card::Ten)),
+                bid: 684,
+            },
+            Hand {
+                value: Value::TwoPairs((Card::King, Card::Seven), Card::Six),
+                bid: 28,
+            },
+            Hand {
+                value: Value::TwoPairs((Card::Jack, Card::Ten), Card::King),
+                bid: 220,
+            },
+            Hand {
+                value: Value::ThreeOfAKind(Card::Queen, (Card::Ace, Card::Jack)),
+                bid: 483,
+            },
+        ];
+        hands.sort();
+
+        let expected_hands = vec![
+            Hand {
+                value: Value::Pair(Card::Three, (Card::King, Card::Ten, Card::Two)),
+                bid: 765,
+            },
+            Hand {
+                value: Value::TwoPairs((Card::Jack, Card::Ten), Card::King),
+                bid: 220,
+            },
+            Hand {
+                value: Value::TwoPairs((Card::King, Card::Seven), Card::Six),
+                bid: 28,
+            },
+            Hand {
+                value: Value::ThreeOfAKind(Card::Five, (Card::Jack, Card::Ten)),
+                bid: 684,
+            },
+            Hand {
+                value: Value::ThreeOfAKind(Card::Queen, (Card::Ace, Card::Jack)),
+                bid: 483,
+            },
+        ];
+
+        assert_eq!(hands, expected_hands);
     }
 }
