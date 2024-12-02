@@ -132,20 +132,38 @@ use std::collections::HashMap;
 const INPUT: &str = include_str!("../input/day_07");
 
 pub fn run() {
-    let (_, mut hands) = separated_list1(newline, Hand::parse)(INPUT).expect("Parsing went wrong");
-    hands.sort();
+    let (_, hands) = separated_list1(newline, Hand::parse)(INPUT).expect("Parsing went wrong");
 
-    let winnings: u32 = hands
+    let mut valued_hands: Vec<_> = hands.clone().into_iter().map(ValuedHand::from).collect();
+    valued_hands.sort();
+
+    let winnings: u32 = valued_hands
         .iter()
         .enumerate()
-        .map(|(rank, hand)| (rank + 1) as u32 * hand.bid)
+        .map(|(rank, valued_hand)| (rank + 1) as u32 * valued_hand.hand.bid)
         .sum();
 
     println!("The total winnings are: {}", winnings);
+
+    let mut valued_hands: Vec<_> = hands
+        .into_iter()
+        .map(Hand::convert_jack_to_joker)
+        .map(ValuedHand::from)
+        .collect();
+    valued_hands.sort();
+
+    let winnings: u32 = valued_hands
+        .iter()
+        .enumerate()
+        .map(|(rank, valued_hand)| (rank + 1) as u32 * valued_hand.hand.bid)
+        .sum();
+
+    println!("The total winnings with jokers are: {}", winnings);
 }
 
 #[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 enum Card {
+    Joker,
     Two,
     Three,
     Four,
@@ -159,6 +177,15 @@ enum Card {
     Queen,
     King,
     Ace,
+}
+
+impl Card {
+    fn jack_to_joker(self) -> Self {
+        match self {
+            Card::Jack => Card::Joker,
+            c => c,
+        }
+    }
 }
 
 impl From<char> for Card {
@@ -215,13 +242,21 @@ impl Hand {
 
         Ok((input, Hand { cards, bid }))
     }
+
+    fn convert_jack_to_joker(mut self) -> Self {
+        self.cards = self.cards.into_iter().map(Card::jack_to_joker).collect();
+        self
+    }
 }
 
 impl From<Hand> for ValuedHand {
     fn from(hand: Hand) -> Self {
         // count all occurrences
         let card_counts = hand.cards.iter().fold(HashMap::new(), |mut counts, card| {
-            *counts.entry(card).or_insert(0) += 1;
+            if card != &Card::Joker {
+                // filter out Jokers
+                *counts.entry(card).or_insert(0) += 1;
+            }
             counts
         });
 
@@ -236,11 +271,23 @@ impl From<Hand> for ValuedHand {
         // determine the value
         let value = match sorted_card_counts[..] {
             [(5, _)] => Value::FiveOfAKind,
+            [(4, _)] => Value::FiveOfAKind,
+            [(3, _)] => Value::FiveOfAKind,
+            [(2, _)] => Value::FiveOfAKind,
+            [(1, _)] => Value::FiveOfAKind,
+            [] => Value::FiveOfAKind,
             [(4, _), (1, _)] => Value::FourOfAKind,
+            [(3, _), (1, _)] => Value::FourOfAKind,
+            [(2, _), (1, _)] => Value::FourOfAKind,
+            [(1, _), (1, _)] => Value::FourOfAKind,
             [(3, _), (2, _)] => Value::FullHouse,
+            [(2, _), (2, _)] => Value::FullHouse,
             [(3, _), (1, _), (1, _)] => Value::ThreeOfAKind,
+            [(2, _), (1, _), (1, _)] => Value::ThreeOfAKind,
+            [(1, _), (1, _), (1, _)] => Value::ThreeOfAKind,
             [(2, _), (2, _), (1, _)] => Value::TwoPairs,
             [(2, _), (1, _), (1, _), (1, _)] => Value::Pair,
+            [(1, _), (1, _), (1, _), (1, _)] => Value::Pair,
             [(1, _), (1, _), (1, _), (1, _), (1, _)] => Value::High,
             _ => panic!("Could not match on a known hand value"),
         };
@@ -251,7 +298,7 @@ impl From<Hand> for ValuedHand {
 
 #[cfg(test)]
 mod tests {
-    use super::Card::{Ace, Five, Jack, King, Queen, Seven, Six, Ten, Three, Two};
+    use super::Card::{Ace, Five, Jack, Joker, King, Queen, Seven, Six, Ten, Three, Two};
     use super::*;
 
     #[test]
@@ -405,6 +452,54 @@ mod tests {
     }
 
     #[test]
+    fn test_valued_hand_from_joker_1() {
+        let hand = Hand {
+            cards: vec![Ten, Five, Five, Joker, Five],
+            bid: 684,
+        };
+
+        assert_eq!(
+            ValuedHand::from(hand.clone()),
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand
+            }
+        );
+    }
+
+    #[test]
+    fn test_valued_hand_from_joker_2() {
+        let hand = Hand {
+            cards: vec![King, Ten, Joker, Joker, Ten],
+            bid: 220,
+        };
+
+        assert_eq!(
+            ValuedHand::from(hand.clone()),
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand
+            }
+        );
+    }
+
+    #[test]
+    fn test_valued_hand_from_joker_3() {
+        let hand = Hand {
+            cards: vec![Queen, Queen, Queen, Joker, Ace],
+            bid: 483,
+        };
+
+        assert_eq!(
+            ValuedHand::from(hand.clone()),
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand
+            }
+        );
+    }
+
+    #[test]
     fn test_valued_hand_sort() {
         let mut valued_hands = vec![
             ValuedHand {
@@ -479,6 +574,88 @@ mod tests {
                 hand: Hand {
                     cards: vec![Queen, Queen, Queen, Jack, Ace],
                     bid: 483,
+                },
+            },
+        ];
+
+        assert_eq!(valued_hands, expected_valued_hands);
+    }
+
+    #[test]
+    fn test_valued_hand_sort_jokers() {
+        let mut valued_hands = vec![
+            ValuedHand {
+                value: Value::Pair,
+                hand: Hand {
+                    cards: vec![Three, Two, Ten, Three, King],
+                    bid: 765,
+                },
+            },
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand: Hand {
+                    cards: vec![Ten, Five, Five, Joker, Five],
+                    bid: 684,
+                },
+            },
+            ValuedHand {
+                value: Value::TwoPairs,
+                hand: Hand {
+                    cards: vec![King, King, Six, Seven, Seven],
+                    bid: 28,
+                },
+            },
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand: Hand {
+                    cards: vec![King, Ten, Joker, Joker, Ten],
+                    bid: 220,
+                },
+            },
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand: Hand {
+                    cards: vec![Queen, Queen, Queen, Joker, Ace],
+                    bid: 483,
+                },
+            },
+        ];
+        valued_hands.sort();
+
+        let expected_valued_hands = vec![
+            ValuedHand {
+                value: Value::Pair,
+                hand: Hand {
+                    cards: vec![Three, Two, Ten, Three, King],
+                    bid: 765,
+                },
+            },
+            ValuedHand {
+                value: Value::TwoPairs,
+                hand: Hand {
+                    cards: vec![King, King, Six, Seven, Seven],
+                    bid: 28,
+                },
+            },
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand: Hand {
+                    cards: vec![Ten, Five, Five, Joker, Five],
+                    bid: 684,
+                },
+            },
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand: Hand {
+                    cards: vec![Queen, Queen, Queen, Joker, Ace],
+                    bid: 483,
+                },
+            },
+            ValuedHand {
+                value: Value::FourOfAKind,
+                hand: Hand {
+                    cards: vec![King, Ten, Joker, Joker, Ten],
+                    bid: 220,
                 },
             },
         ];
